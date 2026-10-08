@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import {
@@ -39,6 +54,112 @@ type Deposit = {
     phone: string | null;
   } | null;
 };
+
+function SortableSection({
+  section,
+  index,
+  selectedId,
+  role,
+  onSelect,
+  onMove,
+  onToggle,
+}: {
+  section: Section;
+  index: number;
+  selectedId: string | null;
+  role: string;
+  onSelect: (section: Section) => void;
+  onMove: (index: number, direction: number) => void;
+  onToggle: (section: Section) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      onClick={() => onSelect(section)}
+      className={`rounded-2xl border p-4 transition ${
+        selectedId === section.id
+          ? "border-yellow-400/60 bg-yellow-400/10"
+          : "border-white/10 bg-white/[0.03]"
+      } ${!section.visible ? "opacity-40" : ""} ${
+        isDragging ? "z-50 scale-[1.02] shadow-2xl shadow-cyan-400/10" : ""
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          {...listeners}
+          disabled={role !== "owner"}
+          onClick={(e) => e.stopPropagation()}
+          className="cursor-grab rounded-lg bg-white/5 p-2 text-zinc-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20"
+          title="اسحب لترتيب القسم"
+        >
+          ☰
+        </button>
+
+        <div className="flex-1">
+          <h3 className="font-black">
+            {section.title ||
+              sectionNames[section.section_type] ||
+              section.section_type}
+          </h3>
+
+          <p className="mt-1 text-xs text-zinc-500">
+            {sectionNames[section.section_type] || section.section_type}
+          </p>
+        </div>
+
+        <button
+          disabled={role !== "owner"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMove(index, -1);
+          }}
+          className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
+        >
+          ↑
+        </button>
+
+        <button
+          disabled={role !== "owner"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMove(index, 1);
+          }}
+          className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
+        >
+          ↓
+        </button>
+
+        <button
+          disabled={role !== "owner"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(section);
+          }}
+          className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
+        >
+          {section.visible ? "👁" : "🙈"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 type Section = {
   id: string;
@@ -160,6 +281,60 @@ export default function DarkControl() {
     }
 
     setSaving(false);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  async function handleDragEnd(event: DragEndEvent) {
+    if (role !== "owner") return;
+
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sections.findIndex((item) => item.id === active.id);
+    const newIndex = sections.findIndex((item) => item.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(sections, oldIndex, newIndex).map(
+      (item, index) => ({
+        ...item,
+        sort_order: index,
+      })
+    );
+
+    setSections(reordered);
+
+    const updates = reordered.map((item) =>
+      supabase
+        .from("site_sections")
+        .update({
+          sort_order: item.sort_order,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", item.id)
+    );
+
+    await Promise.all(updates);
+
+    const selectedId = selected?.id;
+
+    if (selectedId) {
+      const updatedSelected = reordered.find(
+        (item) => item.id === selectedId
+      );
+
+      if (updatedSelected) {
+        setSelected(updatedSelected);
+      }
+    }
   }
 
   async function moveSection(index: number, direction: number) {
@@ -626,82 +801,38 @@ export default function DarkControl() {
                 </p>
               </div>
 
-              <div className="space-y-3">
-                {sections.map((section, index) => (
-                  <div
-                    key={section.id}
-                    onClick={() => setSelected(section)}
-                    className={`rounded-2xl border p-4 transition ${
-                      selected?.id === section.id
-                        ? "border-yellow-400/60 bg-yellow-400/10"
-                        : "border-white/10 bg-white/[0.03]"
-                    } ${
-                      !section.visible ? "opacity-40" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="cursor-grab text-zinc-600">
-                        ☰
-                      </div>
-
-                      <div className="flex-1">
-                        <h3 className="font-black">
-                          {section.title ||
-                            sectionNames[section.section_type] ||
-                            section.section_type}
-                        </h3>
-
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {sectionNames[section.section_type] ||
-                            section.section_type}
-                        </p>
-                      </div>
-
-                      <button
-                        disabled={role !== "owner"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          moveSection(index, -1);
-                        }}
-                        className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
-                      >
-                        <ChevronUp size={17} />
-                      </button>
-
-                      <button
-                        disabled={role !== "owner"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          moveSection(index, 1);
-                        }}
-                        className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
-                      >
-                        <ChevronDown size={17} />
-                      </button>
-
-                      <button
-                        disabled={role !== "owner"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSection(section);
-                        }}
-                        className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
-                      >
-                        {section.visible ? (
-                          <Eye size={17} />
-                        ) : (
-                          <EyeOff size={17} />
-                        )}
-                      </button>
-                    </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sections.map((section) => section.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {sections.map((section, index) => (
+                      <SortableSection
+                        key={section.id}
+                        section={section}
+                        index={index}
+                        selectedId={selected?.id || null}
+                        role={role}
+                        onSelect={setSelected}
+                        onMove={moveSection}
+                        onToggle={toggleSection}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             </>
           ) : (
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
               <h2 className="text-2xl font-black">
-                {menu.find((item) => item[2] === activeMenu)?.[1]}
+                {String(
+                  menu.find((item) => item[2] === activeMenu)?.[1] || ""
+                )}
               </h2>
 
               <p className="mt-3 text-sm text-zinc-500">
