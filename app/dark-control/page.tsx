@@ -34,6 +34,8 @@ import {
   ChevronUp,
   ChevronDown,
   Save,
+  Copy,
+  Trash2,
   LogOut,
   Monitor,
   CheckCircle2,
@@ -63,6 +65,8 @@ function SortableSection({
   onSelect,
   onMove,
   onToggle,
+  onDuplicate,
+  onDelete,
 }: {
   section: Section;
   index: number;
@@ -71,6 +75,8 @@ function SortableSection({
   onSelect: (section: Section) => void;
   onMove: (index: number, direction: number) => void;
   onToggle: (section: Section) => void;
+  onDuplicate: (section: Section) => void;
+  onDelete: (section: Section) => void;
 }) {
   const {
     attributes,
@@ -156,6 +162,29 @@ function SortableSection({
         >
           {section.visible ? "👁" : "🙈"}
         </button>
+        <button
+          disabled={role !== "owner"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate(section);
+          }}
+          className="rounded-lg bg-white/5 p-2 disabled:opacity-20"
+          title="نسخ"
+        >
+          <Copy size={16} />
+        </button>
+
+        <button
+          disabled={role !== "owner"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(section);
+          }}
+          className="rounded-lg bg-red-500/10 p-2 text-red-400 disabled:opacity-20"
+          title="حذف"
+        >
+          <Trash2 size={16} />
+        </button>
       </div>
     </div>
   );
@@ -163,6 +192,7 @@ function SortableSection({
 
 type Section = {
   id: string;
+  page_id?: string;
   section_type: string;
   title: string;
   content: Record<string, any>;
@@ -241,7 +271,12 @@ export default function DarkControl() {
           .eq("page_id", page.id)
           .order("sort_order", { ascending: true });
 
-        setSections(data || []);
+        setSections(
+          (data || []).map((item) => ({
+            ...item,
+            page_id: page.id,
+          }))
+        );
       }
 
       setLoading(false);
@@ -255,6 +290,76 @@ export default function DarkControl() {
       loadDeposits();
     }
   }, [authorized, activeMenu]);
+
+  async function duplicateSection(section: Section) {
+    if (role !== "owner") return;
+
+    const nextSort = sections.length;
+
+    const { data, error } = await supabase
+      .from("site_sections")
+      .insert({
+        page_id: sections[0]?.page_id,
+        section_type: section.section_type,
+        title: `${section.title || "قسم"} - نسخة`,
+        content: { ...section.content },
+        sort_order: nextSort,
+        visible: section.visible,
+      })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      setDepositMessage("تعذر نسخ القسم.");
+      return;
+    }
+
+    const updated = [...sections, data as Section];
+    setSections(updated);
+    setSelected(data as Section);
+  }
+
+  async function deleteSection(section: Section) {
+    if (role !== "owner") return;
+
+    const confirmed = window.confirm(
+      `هل تريد حذف قسم "${section.title || section.section_type}"؟`
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("site_sections")
+      .delete()
+      .eq("id", section.id);
+
+    if (error) {
+      setDepositMessage("تعذر حذف القسم.");
+      return;
+    }
+
+    const remaining = sections
+      .filter((item) => item.id !== section.id)
+      .map((item, index) => ({
+        ...item,
+        sort_order: index,
+      }));
+
+    setSections(remaining);
+
+    if (selected?.id === section.id) {
+      setSelected(remaining[0] || null);
+    }
+
+    await Promise.all(
+      remaining.map((item) =>
+        supabase
+          .from("site_sections")
+          .update({ sort_order: item.sort_order })
+          .eq("id", item.id)
+      )
+    );
+  }
 
   async function saveSection() {
     if (!selected || role !== "owner") return;
@@ -821,6 +926,8 @@ export default function DarkControl() {
                         onSelect={setSelected}
                         onMove={moveSection}
                         onToggle={toggleSection}
+                        onDuplicate={duplicateSection}
+                        onDelete={deleteSection}
                       />
                     ))}
                   </div>
