@@ -47,13 +47,157 @@ export default function Home() {
     loadSite();
   }, []);
 
-  const getSection = (type: string) =>
-    sections.find((section) => section.section_type === type);
+  const renderSection = (section: Section) => {
+    const type = section.section_type;
 
-  const hero = getSection("hero");
-  const games = getSection("games");
-  const offers = getSection("offers");
-  const services = getSection("services");
+    if (type === "hero") {
+      return (
+        <section key={section.id} className="relative overflow-hidden border-b border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.14),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(250,204,21,.12),transparent_30%)]" />
+
+          <div className="relative mx-auto grid min-h-[520px] max-w-7xl items-center gap-10 px-5 py-20 md:grid-cols-2">
+            <div>
+              <span className="mb-5 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-2 text-xs font-bold text-cyan-300">
+                ⚡ DARK STORE
+              </span>
+
+              <h2 className="text-5xl font-black leading-tight md:text-7xl">
+                {section.content?.headline || section.title || "DARK STORE"}
+              </h2>
+
+              <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-400">
+                {section.content?.subheadline || "متجرك الرقمي للألعاب والخدمات"}
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/products"
+                  className="flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 font-black text-black"
+                >
+                  {section.content?.buttonText || "ابدأ الآن"}
+                  <ArrowLeft size={18} />
+                </Link>
+
+                <Link
+                  href="/services"
+                  className="rounded-xl border border-white/10 px-6 py-3 font-bold"
+                >
+                  استكشف الخدمات
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="mx-auto aspect-square max-w-md rounded-[40px] border border-cyan-400/20 bg-white/[0.03] p-6 shadow-2xl shadow-cyan-500/10">
+                <div className="flex h-full items-center justify-center rounded-[32px] border border-yellow-400/10 bg-black">
+                  <div className="text-center">
+                    <div className="text-8xl font-black text-yellow-400">D</div>
+                    <p className="mt-3 font-black tracking-[0.3em] text-cyan-300">
+                      DARK STORE
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (type === "games") {
+      return (
+        <section key={section.id} id="games" className="mx-auto max-w-7xl px-5 py-20">
+          <div className="mb-10">
+            <p className="text-sm font-bold text-yellow-400">GAMING</p>
+            <h2 className="mt-2 text-3xl font-black">
+              {section.title || "الألعاب"}
+            </h2>
+            <p className="mt-2 text-zinc-500">
+              {section.content?.description || "شحن الألعاب والخدمات الرقمية"}
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ["🔥", "Free Fire", "شحن الجواهر"],
+              ["🎯", "PUBG Mobile", "شحن الشدات"],
+              ["⚡", "Call of Duty", "CP وشحن الحساب"],
+            ].map(([icon, name, desc]) => (
+              <Link
+                href="/products"
+                key={name}
+                className="group rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:-translate-y-1 hover:border-yellow-400/40"
+              >
+                <div className="text-4xl">{icon}</div>
+                <h3 className="mt-5 text-xl font-black">{name}</h3>
+                <p className="mt-2 text-sm text-zinc-500">{desc}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    if (type === "services") {
+      return (
+        <section key={section.id} id="services" className="border-y border-white/10 bg-white/[0.02]">
+          <div className="mx-auto max-w-7xl px-5 py-20">
+            <p className="text-sm font-bold text-cyan-300">SOCIAL</p>
+
+            <h2 className="mt-2 text-3xl font-black">
+              {section.title || "الخدمات"}
+            </h2>
+
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                ["TikTok", "متابعين • لايكات • مشاهدات"],
+                ["Facebook", "متابعين • تفاعلات • مشاهدات"],
+                ["WhatsApp", "متابعين • تفاعلات • تصويتات"],
+              ].map(([name, desc]) => (
+                <Link
+                  href="/services"
+                  key={name}
+                  className="rounded-3xl border border-white/10 bg-black/30 p-6"
+                >
+                  <Users className="text-cyan-300" />
+                  <h3 className="mt-5 text-xl font-black">{name}</h3>
+                  <p className="mt-2 text-sm text-zinc-500">{desc}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (type === "offers") {
+      return (
+        <section key={section.id} id="offers" className="mx-auto max-w-7xl px-5 py-20">
+          <div className="rounded-[32px] border border-yellow-400/20 bg-gradient-to-br from-yellow-400/10 to-cyan-400/5 p-8 md:p-12">
+            <Gift className="text-yellow-400" size={32} />
+
+            <h2 className="mt-5 text-3xl font-black">
+              {section.title || "العروض"}
+            </h2>
+
+            <p className="mt-3 text-zinc-400">
+              {section.content?.description || "أقوى عروض DARK STORE"}
+            </p>
+
+            <Link
+              href="/products"
+              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 font-black text-black"
+            >
+              شاهد العروض
+              <ArrowLeft size={18} />
+            </Link>
+          </div>
+        </section>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <main
@@ -101,157 +245,7 @@ export default function Home() {
         </div>
       </header>
 
-      {hero && (
-        <section className="relative overflow-hidden border-b border-white/10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.14),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(250,204,21,.12),transparent_30%)]" />
-
-          <div className="relative mx-auto grid min-h-[520px] max-w-7xl items-center gap-10 px-5 py-20 md:grid-cols-2">
-            <div>
-              <span className="mb-5 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-2 text-xs font-bold text-cyan-300">
-                ⚡ DARK STORE
-              </span>
-
-              <h2 className="text-5xl font-black leading-tight md:text-7xl">
-                {hero.content?.headline || "DARK STORE"}
-              </h2>
-
-              <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-400">
-                {hero.content?.subheadline ||
-                  "متجرك الرقمي للألعاب والخدمات"}
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/products"
-                  className="flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 font-black text-black"
-                >
-                  {hero.content?.buttonText || "ابدأ الآن"}
-                  <ArrowLeft size={18} />
-                </Link>
-
-                <Link
-                  href="/services"
-                  className="rounded-xl border border-white/10 px-6 py-3 font-bold"
-                >
-                  استكشف الخدمات
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="mx-auto aspect-square max-w-md rounded-[40px] border border-cyan-400/20 bg-white/[0.03] p-6 shadow-2xl shadow-cyan-500/10">
-                <div className="flex h-full items-center justify-center rounded-[32px] border border-yellow-400/10 bg-black">
-                  <div className="text-center">
-                    <div className="text-8xl font-black text-yellow-400">
-                      D
-                    </div>
-                    <p className="mt-3 font-black tracking-[0.3em] text-cyan-300">
-                      DARK STORE
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {games && (
-        <section id="games" className="mx-auto max-w-7xl px-5 py-20">
-          <div className="mb-10">
-            <p className="text-sm font-bold text-yellow-400">
-              GAMING
-            </p>
-
-            <h2 className="mt-2 text-3xl font-black">
-              {games.title || "الألعاب"}
-            </h2>
-
-            <p className="mt-2 text-zinc-500">
-              {games.content?.description ||
-                "شحن الألعاب والخدمات الرقمية"}
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              ["🔥", "Free Fire", "شحن الجواهر"],
-              ["🎯", "PUBG Mobile", "شحن الشدات"],
-              ["⚡", "Call of Duty", "CP وشحن الحساب"],
-            ].map(([icon, name, desc]) => (
-              <Link
-                href="/products"
-                key={name}
-                className="group rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:-translate-y-1 hover:border-yellow-400/40"
-              >
-                <div className="text-4xl">{icon}</div>
-                <h3 className="mt-5 text-xl font-black">{name}</h3>
-                <p className="mt-2 text-sm text-zinc-500">{desc}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {services && (
-        <section
-          id="services"
-          className="border-y border-white/10 bg-white/[0.02]"
-        >
-          <div className="mx-auto max-w-7xl px-5 py-20">
-            <p className="text-sm font-bold text-cyan-300">
-              SOCIAL
-            </p>
-
-            <h2 className="mt-2 text-3xl font-black">
-              {services.title || "الخدمات"}
-            </h2>
-
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              {[
-                ["TikTok", "متابعين • لايكات • مشاهدات"],
-                ["Facebook", "متابعين • تفاعلات • مشاهدات"],
-                ["WhatsApp", "متابعين • تفاعلات • تصويتات"],
-              ].map(([name, desc]) => (
-                <Link
-                  href="/services"
-                  key={name}
-                  className="rounded-3xl border border-white/10 bg-black/30 p-6"
-                >
-                  <Users className="text-cyan-300" />
-                  <h3 className="mt-5 text-xl font-black">{name}</h3>
-                  <p className="mt-2 text-sm text-zinc-500">{desc}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {offers && (
-        <section id="offers" className="mx-auto max-w-7xl px-5 py-20">
-          <div className="rounded-[32px] border border-yellow-400/20 bg-gradient-to-br from-yellow-400/10 to-cyan-400/5 p-8 md:p-12">
-            <Gift className="text-yellow-400" size={32} />
-
-            <h2 className="mt-5 text-3xl font-black">
-              {offers.title || "العروض"}
-            </h2>
-
-            <p className="mt-3 text-zinc-400">
-              {offers.content?.description ||
-                "أقوى عروض DARK STORE"}
-            </p>
-
-            <Link
-              href="/products"
-              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 font-black text-black"
-            >
-              شاهد العروض
-              <ArrowLeft size={18} />
-            </Link>
-          </div>
-        </section>
-      )}
+      {sections.map((section) => renderSection(section))}
 
       <section className="border-t border-white/10">
         <div className="mx-auto grid max-w-7xl gap-4 px-5 py-16 md:grid-cols-3">

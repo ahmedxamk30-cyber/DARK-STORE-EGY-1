@@ -36,6 +36,7 @@ import {
   Save,
   Copy,
   Trash2,
+  Plus,
   LogOut,
   Monitor,
   CheckCircle2,
@@ -205,10 +206,13 @@ const sectionNames: Record<string, string> = {
   games: "قسم الألعاب",
   services: "الخدمات",
   offers: "العروض",
+  footer: "الفوتر",
+  banner: "بانر",
+  text: "نص",
+  image: "صورة",
   products: "المنتجات",
   reviews: "آراء العملاء",
   faq: "الأسئلة الشائعة",
-  footer: "الفوتر",
 };
 
 export default function DarkControl() {
@@ -290,6 +294,102 @@ export default function DarkControl() {
       loadDeposits();
     }
   }, [authorized, activeMenu]);
+
+  async function addSection(type: string) {
+    if (role !== "owner") return;
+
+    const pageId = sections[0]?.page_id;
+    if (!pageId) {
+      setDepositMessage("تعذر تحديد الصفحة.");
+      return;
+    }
+
+    const defaults: Record<string, { title: string; content: Record<string, any> }> = {
+      hero: {
+        title: "البانر الرئيسي",
+        content: {
+          headline: "DARK STORE",
+          subheadline: "متجرك الرقمي للألعاب والخدمات",
+          buttonText: "ابدأ الآن",
+        },
+      },
+      games: {
+        title: "الألعاب",
+        content: { description: "شحن الألعاب والخدمات الرقمية" },
+      },
+      services: {
+        title: "الخدمات",
+        content: { description: "خدمات السوشيال ميديا" },
+      },
+      offers: {
+        title: "العروض",
+        content: { description: "أقوى عروض DARK STORE" },
+      },
+      products: {
+        title: "المنتجات",
+        content: { description: "منتجات DARK STORE" },
+      },
+      reviews: {
+        title: "آراء العملاء",
+        content: { description: "آراء وتجارب عملائنا" },
+      },
+      faq: {
+        title: "الأسئلة الشائعة",
+        content: { description: "إجابات عن أهم الأسئلة" },
+      },
+      banner: {
+        title: "بانر جديد",
+        content: {
+          headline: "عنوان البانر",
+          subheadline: "وصف البانر",
+          buttonText: "اعرف المزيد",
+        },
+      },
+      text: {
+        title: "قسم نصي",
+        content: {
+          headline: "عنوان القسم",
+          description: "اكتب محتوى القسم هنا",
+        },
+      },
+      image: {
+        title: "قسم صورة",
+        content: {
+          imageUrl: "",
+          description: "وصف الصورة",
+        },
+      },
+    };
+
+    const preset = defaults[type] || defaults.text;
+
+    const { data, error } = await supabase
+      .from("site_sections")
+      .insert({
+        page_id: pageId,
+        section_type: type,
+        title: preset.title,
+        content: preset.content,
+        sort_order: sections.length,
+        visible: true,
+      })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      setDepositMessage("تعذر إضافة القسم.");
+      return;
+    }
+
+    const newSection = {
+      ...(data as Section),
+      page_id: pageId,
+    };
+
+    setSections((current) => [...current, newSection]);
+    setSelected(newSection);
+    setDepositMessage("تمت إضافة القسم بنجاح.");
+  }
 
   async function duplicateSection(section: Section) {
     if (role !== "owner") return;
@@ -911,6 +1011,36 @@ export default function DarkControl() {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
+                <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Plus size={18} className="text-cyan-300" />
+                    <span className="font-black">إضافة قسم جديد</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      ["hero", "بانر رئيسي"],
+                      ["games", "الألعاب"],
+                      ["services", "الخدمات"],
+                      ["offers", "العروض"],
+                      ["products", "المنتجات"],
+                      ["reviews", "آراء العملاء"],
+                      ["faq", "الأسئلة الشائعة"],
+                      ["text", "نص"],
+                    ].map(([type, label]) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => addSection(type)}
+                        disabled={role !== "owner"}
+                        className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm font-bold transition hover:border-cyan-400/40 hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        + {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <SortableContext
                   items={sections.map((section) => section.id)}
                   strategy={verticalListSortingStrategy}
