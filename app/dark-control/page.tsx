@@ -21,7 +21,24 @@ import {
   Save,
   LogOut,
   Monitor,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
+
+type Deposit = {
+  id: string;
+  user_id: string;
+  amount: number;
+  method: string | null;
+  reference: string | null;
+  status: string;
+  created_at: string;
+  profile?: {
+    full_name: string | null;
+    phone: string | null;
+  } | null;
+};
 
 type Section = {
   id: string;
@@ -54,6 +71,10 @@ export default function DarkControl() {
   const [activeMenu, setActiveMenu] = useState("builder");
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [depositsLoading, setDepositsLoading] = useState(false);
+  const [depositAction, setDepositAction] = useState<string | null>(null);
+  const [depositMessage, setDepositMessage] = useState("");
 
   useEffect(() => {
     async function loadControl() {
@@ -101,6 +122,12 @@ export default function DarkControl() {
 
     loadControl();
   }, [router]);
+
+  useEffect(() => {
+    if (authorized && activeMenu === "wallet") {
+      loadDeposits();
+    }
+  }, [authorized, activeMenu]);
 
   async function saveSection() {
     if (!selected || role !== "owner") return;
@@ -176,6 +203,80 @@ export default function DarkControl() {
     );
 
     setSelected(updated);
+  }
+
+  async function loadDeposits() {
+    setDepositsLoading(true);
+    setDepositMessage("");
+
+    const { data, error } = await supabase
+      .from("deposits")
+      .select("id, user_id, amount, method, reference, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      setDepositMessage("تعذر تحميل طلبات الشحن.");
+      setDepositsLoading(false);
+      return;
+    }
+
+    const rows = (data || []) as Deposit[];
+    const userIds = [...new Set(rows.map((item) => item.user_id))];
+
+    if (userIds.length) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone")
+        .in("id", userIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((profile) => [profile.id, profile])
+      );
+
+      setDeposits(
+        rows.map((item) => ({
+          ...item,
+          profile: profileMap.get(item.user_id) || null,
+        }))
+      );
+    } else {
+      setDeposits(rows);
+    }
+
+    setDepositsLoading(false);
+  }
+
+  async function reviewDeposit(
+    id: string,
+    action: "approve" | "reject"
+  ) {
+    if (!["admin", "owner"].includes(role)) return;
+
+    setDepositAction(id);
+    setDepositMessage("");
+
+    const { error } = await supabase.rpc(
+      action === "approve"
+        ? "approve_deposit"
+        : "reject_deposit",
+      { p_deposit_id: id }
+    );
+
+    if (error) {
+      setDepositMessage(error.message || "تعذر تنفيذ العملية.");
+      setDepositAction(null);
+      return;
+    }
+
+    setDepositMessage(
+      action === "approve"
+        ? "تم اعتماد طلب الشحن وإضافة الرصيد."
+        : "تم رفض طلب الشحن."
+    );
+
+    await loadDeposits();
+    setDepositAction(null);
   }
 
   async function logout() {
@@ -281,7 +382,146 @@ export default function DarkControl() {
         </aside>
 
         <section className="min-h-[calc(100vh-64px)] p-4 lg:p-6">
-          {activeMenu === "builder" ? (
+          {activeMenu === "wallet" ? (
+            <>
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Wallet className="text-cyan-400" />
+                    <h2 className="text-2xl font-black">
+                      طلبات شحن الرصيد
+                    </h2>
+                  </div>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    راجع التحويلات ثم اعتمد أو ارفض الطلب.
+                    الاعتماد يضيف الرصيد تلقائيًا.
+                  </p>
+                </div>
+
+                <button
+                  onClick={loadDeposits}
+                  disabled={depositsLoading}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold disabled:opacity-50"
+                >
+                  <RefreshCw
+                    size={16}
+                    className={depositsLoading ? "animate-spin" : ""}
+                  />
+                  تحديث
+                </button>
+              </div>
+
+              {depositMessage && (
+                <div className="mb-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm text-cyan-200">
+                  {depositMessage}
+                </div>
+              )}
+
+              {depositsLoading ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-zinc-500">
+                  جاري تحميل طلبات الشحن...
+                </div>
+              ) : deposits.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center text-zinc-500">
+                  لا توجد طلبات شحن حتى الآن.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {deposits.map((deposit) => (
+                    <div
+                      key={deposit.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-lg font-black text-yellow-300">
+                              {Number(deposit.amount).toFixed(2)} ج
+                            </span>
+
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                                deposit.status === "approved"
+                                  ? "bg-green-400/10 text-green-300"
+                                  : deposit.status === "rejected"
+                                    ? "bg-red-400/10 text-red-300"
+                                    : "bg-yellow-400/10 text-yellow-300"
+                              }`}
+                            >
+                              {deposit.status === "approved"
+                                ? "مقبول"
+                                : deposit.status === "rejected"
+                                  ? "مرفوض"
+                                  : "قيد المراجعة"}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 grid gap-1 text-sm text-zinc-400 sm:grid-cols-2">
+                            <p>
+                              العميل:{" "}
+                              <span className="text-white">
+                                {deposit.profile?.full_name || "بدون اسم"}
+                              </span>
+                            </p>
+
+                            <p>
+                              هاتف العميل:{" "}
+                              <span className="text-white">
+                                {deposit.profile?.phone || "غير مسجل"}
+                              </span>
+                            </p>
+
+                            <p>
+                              رقم التحويل:{" "}
+                              <span className="text-white">
+                                {deposit.reference || "غير موجود"}
+                              </span>
+                            </p>
+
+                            <p>
+                              التاريخ:{" "}
+                              <span className="text-white">
+                                {new Date(
+                                  deposit.created_at
+                                ).toLocaleString("ar-EG")}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {deposit.status === "pending" && (
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              onClick={() =>
+                                reviewDeposit(deposit.id, "approve")
+                              }
+                              disabled={depositAction === deposit.id}
+                              className="flex items-center gap-2 rounded-xl bg-green-400 px-4 py-3 text-sm font-black text-black disabled:opacity-40"
+                            >
+                              <CheckCircle2 size={17} />
+                              اعتماد
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                reviewDeposit(deposit.id, "reject")
+                              }
+                              disabled={depositAction === deposit.id}
+                              className="flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-black text-red-300 disabled:opacity-40"
+                            >
+                              <XCircle size={17} />
+                              رفض
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : activeMenu === "builder" ? (
             <>
               <div className="mb-6">
                 <div className="flex items-center gap-2">
