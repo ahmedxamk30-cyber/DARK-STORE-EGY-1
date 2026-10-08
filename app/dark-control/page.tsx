@@ -1063,6 +1063,119 @@ export default function DarkControl() {
                   </div>
                 </SortableContext>
               </DndContext>
+
+              {selected && role === "owner" && (
+                <div className="mt-6 rounded-3xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-yellow-400">
+                        محرر القسم
+                      </p>
+                      <h3 className="mt-1 text-xl font-black">
+                        {sectionNames[selected.section_type] ||
+                          selected.section_type}
+                      </h3>
+                    </div>
+
+                    <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400">
+                      {selected.section_type}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-bold text-zinc-300">
+                        اسم القسم
+                      </span>
+                      <input
+                        value={selected.title || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            title: e.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-white/10 bg-black/40 p-3 outline-none focus:border-yellow-400"
+                      />
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-bold text-zinc-300">
+                        العنوان الرئيسي
+                      </span>
+                      <input
+                        value={selected.content?.headline || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            content: {
+                              ...selected.content,
+                              headline: e.target.value,
+                            },
+                          })
+                        }
+                        className="rounded-xl border border-white/10 bg-black/40 p-3 outline-none focus:border-yellow-400"
+                      />
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-bold text-zinc-300">
+                        الوصف
+                      </span>
+                      <textarea
+                        rows={4}
+                        value={
+                          selected.content?.subheadline ||
+                          selected.content?.description ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            content: {
+                              ...selected.content,
+                              ...(selected.content?.subheadline !== undefined
+                                ? { subheadline: e.target.value }
+                                : { description: e.target.value }),
+                            },
+                          })
+                        }
+                        className="resize-none rounded-xl border border-white/10 bg-black/40 p-3 outline-none focus:border-yellow-400"
+                      />
+                    </label>
+
+                    {(selected.section_type === "hero" ||
+                      selected.section_type === "banner") && (
+                      <label className="grid gap-2">
+                        <span className="text-sm font-bold text-zinc-300">
+                          نص الزر
+                        </span>
+                        <input
+                          value={selected.content?.buttonText || ""}
+                          onChange={(e) =>
+                            setSelected({
+                              ...selected,
+                              content: {
+                                ...selected.content,
+                                buttonText: e.target.value,
+                              },
+                            })
+                          }
+                          className="rounded-xl border border-white/10 bg-black/40 p-3 outline-none focus:border-yellow-400"
+                        />
+                      </label>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => saveSection()}
+                      className="rounded-xl bg-yellow-400 px-5 py-3 font-black text-black transition hover:bg-yellow-300"
+                    >
+                      💾 حفظ تعديلات القسم
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
