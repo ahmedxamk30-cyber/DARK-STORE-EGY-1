@@ -75,6 +75,12 @@ export default function DarkControl() {
   const [depositsLoading, setDepositsLoading] = useState(false);
   const [depositAction, setDepositAction] = useState<string | null>(null);
   const [depositMessage, setDepositMessage] = useState("");
+  const [manualUserId, setManualUserId] = useState("");
+  const [manualAmount, setManualAmount] = useState("");
+  const [manualDescription, setManualDescription] = useState(
+    "إضافة رصيد يدوي من OWNER"
+  );
+  const [manualLoading, setManualLoading] = useState(false);
 
   useEffect(() => {
     async function loadControl() {
@@ -279,6 +285,43 @@ export default function DarkControl() {
     setDepositAction(null);
   }
 
+  async function addManualBalance() {
+    if (role !== "owner") return;
+
+    if (!manualUserId.trim()) {
+      setDepositMessage("اكتب ID العميل.");
+      return;
+    }
+
+    const amount = Number(manualAmount);
+
+    if (!amount || amount <= 0) {
+      setDepositMessage("اكتب مبلغًا صحيحًا.");
+      return;
+    }
+
+    setManualLoading(true);
+    setDepositMessage("");
+
+    const { error } = await supabase.rpc("add_manual_balance", {
+      p_user_id: manualUserId.trim(),
+      p_amount: amount,
+      p_description:
+        manualDescription.trim() || "إضافة رصيد يدوي من OWNER",
+    });
+
+    if (error) {
+      setDepositMessage(error.message || "تعذر إضافة الرصيد.");
+      setManualLoading(false);
+      return;
+    }
+
+    setManualUserId("");
+    setManualAmount("");
+    setDepositMessage("تمت إضافة الرصيد للعميل وتسجيل العملية.");
+    setManualLoading(false);
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -415,6 +458,53 @@ export default function DarkControl() {
               {depositMessage && (
                 <div className="mb-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm text-cyan-200">
                   {depositMessage}
+                </div>
+              )}
+
+              {role === "owner" && (
+                <div className="mb-6 rounded-3xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-black text-yellow-300">
+                      إضافة رصيد يدوي
+                    </h3>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      متاحة للـ OWNER فقط عند استلام تحويل خارج النظام.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <input
+                      value={manualUserId}
+                      onChange={(e) => setManualUserId(e.target.value)}
+                      placeholder="ID العميل"
+                      className="rounded-xl border border-white/10 bg-black/40 p-3 text-sm outline-none focus:border-yellow-400"
+                    />
+
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={manualAmount}
+                      onChange={(e) => setManualAmount(e.target.value)}
+                      placeholder="المبلغ بالجنيه"
+                      className="rounded-xl border border-white/10 bg-black/40 p-3 text-sm outline-none focus:border-yellow-400"
+                    />
+
+                    <input
+                      value={manualDescription}
+                      onChange={(e) => setManualDescription(e.target.value)}
+                      placeholder="وصف العملية"
+                      className="rounded-xl border border-white/10 bg-black/40 p-3 text-sm outline-none focus:border-yellow-400"
+                    />
+                  </div>
+
+                  <button
+                    onClick={addManualBalance}
+                    disabled={manualLoading}
+                    className="mt-3 w-full rounded-xl bg-yellow-400 p-3 font-black text-black hover:bg-yellow-300 disabled:opacity-40"
+                  >
+                    {manualLoading ? "جاري إضافة الرصيد..." : "إضافة الرصيد"}
+                  </button>
                 </div>
               )}
 
